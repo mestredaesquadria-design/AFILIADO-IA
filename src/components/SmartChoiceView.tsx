@@ -146,7 +146,15 @@ export const SmartChoiceView: React.FC<SmartChoiceViewProps> = ({
 
       {/* Top 20 Cards Ranking */}
       <div className="space-y-4">
-        {top20.map((product, index) => {
+        {top20.length === 0 ? (
+          <div className="p-8 bg-white rounded-2xl border border-slate-200 text-center space-y-2">
+            <h3 className="text-sm font-bold text-slate-800">Nenhum produto disponível para ranqueamento</h3>
+            <p className="text-xs text-slate-500">
+              O algoritmo de Escolha Inteligente ranqueia produtos ativos no catálogo. Adicione produtos na Central de Produtos.
+            </p>
+          </div>
+        ) : (
+          top20.map((product, index) => {
           const isSelected = selectedIds.includes(product.id);
           const isExpanded = expandedId === product.id;
 
@@ -289,7 +297,8 @@ export const SmartChoiceView: React.FC<SmartChoiceViewProps> = ({
 
             </div>
           );
-        })}
+        })
+      )}
       </div>
 
     </div>

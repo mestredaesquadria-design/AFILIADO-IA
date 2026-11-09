@@ -22,11 +22,14 @@ import {
   Cpu,
   ArrowRight
 } from 'lucide-react';
-import { DashboardMetrics, ActiveTab } from '../types';
+import { DashboardMetrics, ActiveTab, AffiliateProduct } from '../types';
 
 interface DashboardViewProps {
   metrics: DashboardMetrics | null;
   chartData: any;
+  products?: AffiliateProduct[];
+  productsLoading?: boolean;
+  productsError?: string | null;
   setActiveTab: (tab: ActiveTab) => void;
   onOpenAutomation: () => void;
   highContrast: boolean;
@@ -35,6 +38,9 @@ interface DashboardViewProps {
 export const DashboardView: React.FC<DashboardViewProps> = ({
   metrics,
   chartData,
+  products = [],
+  productsLoading = false,
+  productsError = null,
   setActiveTab,
   onOpenAutomation,
   highContrast,
@@ -417,11 +423,18 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
               onChange={e => setFilterProduct(e.target.value)}
               className="w-full text-xs font-medium border border-slate-200 rounded-lg p-2 bg-slate-50 focus:ring-2 focus:ring-emerald-500 outline-hidden"
             >
-              <option value="all">Todos os Produtos do Catálogo</option>
-              <option value="airfryer">Air Fryer Digital 5.5L</option>
-              <option value="fone">Fone Bluetooth TWS ANC</option>
-              <option value="triturador">Mini Triturador USB</option>
-              <option value="serum">Kit Sérum Vitamina C</option>
+              <option value="all">
+                {productsLoading
+                  ? 'Carregando produtos do catálogo...'
+                  : products.length > 0
+                  ? `Todos os Produtos do Catálogo (${products.length})`
+                  : 'Nenhum produto cadastrado no catálogo'}
+              </option>
+              {products.map(p => (
+                <option key={p.id} value={p.id}>
+                  [{p.marketplace}] {p.name}
+                </option>
+              ))}
             </select>
           </div>
         </div>

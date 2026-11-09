@@ -15,7 +15,9 @@ import {
   CheckSquare, 
   Square, 
   AlertTriangle,
-  RefreshCw
+  RefreshCw,
+  AlertCircle,
+  Loader2
 } from 'lucide-react';
 import { AffiliateProduct, AutomationJob } from '../types';
 
@@ -27,6 +29,9 @@ interface AutomationViewProps {
   onExecuteAutomation: (productId: string, channels: string[], autoApprove: boolean) => Promise<void>;
   onViewPublications: () => void;
   highContrast: boolean;
+  isLoading?: boolean;
+  error?: string | null;
+  onRefreshProducts?: () => void;
 }
 
 export const AutomationView: React.FC<AutomationViewProps> = ({
@@ -37,8 +42,13 @@ export const AutomationView: React.FC<AutomationViewProps> = ({
   onExecuteAutomation,
   onViewPublications,
   highContrast,
+  isLoading = false,
+  error = null,
+  onRefreshProducts,
 }) => {
-  const activeProduct = selectedProduct || products[0] || null;
+  const activeProduct = selectedProduct && products.some(p => p.id === selectedProduct.id)
+    ? (products.find(p => p.id === selectedProduct.id) || selectedProduct)
+    : products[0] || null;
   const [selectedChannels, setSelectedChannels] = useState<string[]>(['TikTok', 'Instagram', 'WhatsApp']);
   const [autoApprove, setAutoApprove] = useState(true);
   const [dailyLimit, setDailyLimit] = useState(4);
@@ -135,6 +145,46 @@ export const AutomationView: React.FC<AutomationViewProps> = ({
             <span>Passo 1: Selecionar Produto</span>
           </h3>
 
+          {/* Loading Indicator */}
+          {isLoading && (
+            <div className="p-3 bg-slate-50 border border-slate-200 rounded-xl text-xs text-slate-600 flex items-center space-x-2">
+              <Loader2 className="w-4 h-4 text-emerald-600 animate-spin shrink-0" />
+              <span>Carregando catálogo de produtos oficiais...</span>
+            </div>
+          )}
+
+          {/* Error Message */}
+          {error && !isLoading && (
+            <div className="p-3 bg-rose-50 border border-rose-200 rounded-xl text-xs text-rose-800 flex items-start justify-between gap-2">
+              <div className="flex items-start space-x-2">
+                <AlertCircle className="w-4 h-4 text-rose-600 shrink-0 mt-0.5" />
+                <span>{error}</span>
+              </div>
+              {onRefreshProducts && (
+                <button
+                  type="button"
+                  onClick={onRefreshProducts}
+                  className="px-2 py-1 bg-rose-100 hover:bg-rose-200 text-rose-900 rounded font-bold text-[11px] shrink-0"
+                >
+                  Recarregar
+                </button>
+              )}
+            </div>
+          )}
+
+          {/* Empty Catalog Warning */}
+          {!isLoading && !error && products.length === 0 && (
+            <div className="p-3 bg-amber-50 border border-amber-200 rounded-xl text-xs text-amber-900 flex items-start space-x-2">
+              <AlertTriangle className="w-4 h-4 text-amber-600 shrink-0 mt-0.5" />
+              <div>
+                <p className="font-bold">Nenhum produto cadastrado no catálogo.</p>
+                <p className="text-[11px] text-amber-700 mt-0.5">
+                  Acesse a Central de Produtos para importar ou cadastrar produtos de afiliados antes de iniciar.
+                </p>
+              </div>
+            </div>
+          )}
+
           <div>
             <label className="block text-xs font-bold text-slate-700 mb-1">Produto para Divulgação:</label>
             <select
@@ -143,13 +193,20 @@ export const AutomationView: React.FC<AutomationViewProps> = ({
                 const p = products.find(prod => prod.id === e.target.value);
                 if (p) onSelectProduct(p);
               }}
-              className="w-full text-xs font-semibold p-2.5 border border-slate-300 rounded-xl bg-slate-50 focus:bg-white focus:ring-2 focus:ring-emerald-500 outline-hidden"
+              disabled={products.length === 0 || isLoading}
+              className="w-full text-xs font-semibold p-2.5 border border-slate-300 rounded-xl bg-slate-50 focus:bg-white focus:ring-2 focus:ring-emerald-500 outline-hidden disabled:opacity-60"
             >
-              {products.map(p => (
-                <option key={p.id} value={p.id}>
-                  [{p.marketplace}] {p.name} (Comissão: {p.commissionPercent}%)
+              {products.length === 0 ? (
+                <option value="">
+                  {isLoading ? 'Carregando produtos do catálogo...' : 'Nenhum produto disponível'}
                 </option>
-              ))}
+              ) : (
+                products.map(p => (
+                  <option key={p.id} value={p.id}>
+                    [{p.marketplace}] {p.name} (R$ {p.price.toFixed(2)} • {p.commissionPercent}% comissão)
+                  </option>
+                ))
+              )}
             </select>
           </div>
 
@@ -237,10 +294,12 @@ export const AutomationView: React.FC<AutomationViewProps> = ({
           {/* Primary Trigger Button */}
           <button
             onClick={handleStartAutomation}
-            disabled={isRunning || selectedChannels.length === 0}
+            disabled={isRunning || selectedChannels.length === 0 || products.length === 0 || !activeProduct}
             className={`w-full flex items-center justify-center space-x-2 py-4 px-4 rounded-xl font-black text-sm uppercase tracking-wider shadow-lg transition-all ${
               isRunning
                 ? 'bg-slate-400 text-white cursor-wait'
+                : products.length === 0 || !activeProduct
+                ? 'bg-slate-300 text-slate-500 cursor-not-allowed'
                 : 'bg-emerald-600 hover:bg-emerald-700 text-white shadow-emerald-600/30 active:scale-95'
             }`}
           >

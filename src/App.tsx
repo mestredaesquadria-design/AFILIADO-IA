@@ -65,6 +65,8 @@ export default function App() {
 
   // Selected product in focus for Content Studio / Automation
   const [selectedProduct, setSelectedProduct] = useState<AffiliateProduct | null>(null);
+  const [productsLoading, setProductsLoading] = useState<boolean>(true);
+  const [productsError, setProductsError] = useState<string | null>(null);
 
   const showToast = (msg: string) => {
     setToastMessage(msg);
@@ -82,18 +84,32 @@ export default function App() {
       .catch(err => console.error('Error fetching dashboard:', err));
   };
 
-  const fetchProducts = () => {
-    fetch('/api/products')
-      .then(res => res.json())
-      .then(data => {
-        if (data.products) {
-          setProducts(data.products);
-          if (!selectedProduct && data.products.length > 0) {
-            setSelectedProduct(data.products[0]);
+  const fetchProducts = async () => {
+    setProductsLoading(true);
+    setProductsError(null);
+    try {
+      const res = await fetch('/api/products');
+      if (!res.ok) {
+        throw new Error(`Falha na resposta do servidor (HTTP ${res.status})`);
+      }
+      const data = await res.json();
+      if (data && Array.isArray(data.products)) {
+        setProducts(data.products);
+        setSelectedProduct(prev => {
+          if (prev && data.products.some((p: AffiliateProduct) => p.id === prev.id)) {
+            return data.products.find((p: AffiliateProduct) => p.id === prev.id) || prev;
           }
-        }
-      })
-      .catch(err => console.error('Error fetching products:', err));
+          return data.products.length > 0 ? data.products[0] : null;
+        });
+      } else {
+        setProducts([]);
+      }
+    } catch (err: any) {
+      console.error('Error fetching products:', err);
+      setProductsError(err?.message || 'Erro de comunicação ao carregar o catálogo de produtos.');
+    } finally {
+      setProductsLoading(false);
+    }
   };
 
   const fetchLinks = () => {
@@ -526,7 +542,7 @@ export default function App() {
         activeTab={activeTab}
         setActiveTab={setActiveTab}
         onOpenAutomation={() => {
-          if (!selectedProduct && products.length > 0) setSelectedProduct(products[0]);
+          setSelectedProduct(prev => prev || (products.length > 0 ? products[0] : null));
           setActiveTab('automation');
         }}
         onToggleAssistant={() => setIsAssistantOpen(!isAssistantOpen)}
@@ -553,8 +569,14 @@ export default function App() {
             <DashboardView
               metrics={metrics}
               chartData={chartData}
+              products={products}
+              productsLoading={productsLoading}
+              productsError={productsError}
               setActiveTab={setActiveTab}
-              onOpenAutomation={() => setActiveTab('automation')}
+              onOpenAutomation={() => {
+                setSelectedProduct(prev => prev || (products.length > 0 ? products[0] : null));
+                setActiveTab('automation');
+              }}
               highContrast={highContrast}
             />
           )}
@@ -583,6 +605,8 @@ export default function App() {
               onAddNewProduct={handleAddNewProduct}
               onImportUrl={handleImportUrl}
               highContrast={highContrast}
+              isLoading={productsLoading}
+              error={productsError}
             />
           )}
 
@@ -604,6 +628,9 @@ export default function App() {
               onExecuteAutomation={handleExecuteAutomation}
               onViewPublications={() => setActiveTab('publications')}
               highContrast={highContrast}
+              isLoading={productsLoading}
+              error={productsError}
+              onRefreshProducts={fetchProducts}
             />
           )}
 
@@ -614,6 +641,9 @@ export default function App() {
               onSelectProduct={setSelectedProduct}
               onSchedulePost={handleSchedulePost}
               highContrast={highContrast}
+              isLoading={productsLoading}
+              error={productsError}
+              onRefreshProducts={fetchProducts}
             />
           )}
 

@@ -15,7 +15,11 @@ import {
   RefreshCw,
   Zap,
   SlidersHorizontal,
-  DollarSign
+  DollarSign,
+  AlertCircle,
+  AlertTriangle,
+  Loader2,
+  X
 } from 'lucide-react';
 import { AffiliateProduct } from '../types';
 
@@ -27,6 +31,8 @@ interface ProductsViewProps {
   onAddNewProduct: (product: any) => void;
   onImportUrl: (url: string) => void;
   highContrast: boolean;
+  isLoading?: boolean;
+  error?: string | null;
 }
 
 export const ProductsView: React.FC<ProductsViewProps> = ({
@@ -37,6 +43,8 @@ export const ProductsView: React.FC<ProductsViewProps> = ({
   onAddNewProduct,
   onImportUrl,
   highContrast,
+  isLoading = false,
+  error = null,
 }) => {
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedCategory, setSelectedCategory] = useState('all');
@@ -69,15 +77,40 @@ export const ProductsView: React.FC<ProductsViewProps> = ({
     setTimeout(() => setCopiedLinkId(null), 2500);
   };
 
-  const categories = Array.from(new Set(products.map(p => p.category)));
+  const categories = Array.from(new Set(products.map(p => p.category).filter(Boolean)));
+
+  const hasActiveFilters = Boolean(
+    searchTerm.trim() !== '' ||
+    selectedCategory !== 'all' ||
+    selectedMarketplace !== 'all' ||
+    minCommission > 0 ||
+    minRating > 0 ||
+    onlyFavorites ||
+    onlyTrending ||
+    onlyExtraCommission
+  );
+
+  const handleResetFilters = () => {
+    setSearchTerm('');
+    setSelectedCategory('all');
+    setSelectedMarketplace('all');
+    setMinCommission(0);
+    setMinRating(0);
+    setOnlyFavorites(false);
+    setOnlyTrending(false);
+    setOnlyExtraCommission(false);
+  };
 
   // Filtered products
   const filtered = products.filter(p => {
-    if (searchTerm) {
-      const q = searchTerm.toLowerCase();
-      if (!p.name.toLowerCase().includes(q) && !p.description.toLowerCase().includes(q)) return false;
+    if (searchTerm.trim()) {
+      const q = searchTerm.trim().toLowerCase();
+      const matchName = p.name ? p.name.toLowerCase().includes(q) : false;
+      const matchDesc = p.description ? p.description.toLowerCase().includes(q) : false;
+      const matchCategory = p.category ? p.category.toLowerCase().includes(q) : false;
+      if (!matchName && !matchDesc && !matchCategory) return false;
     }
-    if (selectedCategory !== 'all' && p.category !== selectedCategory) return false;
+    if (selectedCategory !== 'all' && p.category?.toLowerCase() !== selectedCategory.toLowerCase()) return false;
     if (selectedMarketplace !== 'all' && p.marketplace !== selectedMarketplace) return false;
     if (p.commissionPercent < minCommission) return false;
     if (p.rating < minRating) return false;
@@ -275,13 +308,113 @@ export const ProductsView: React.FC<ProductsViewProps> = ({
 
           </div>
 
-          <div className="text-xs text-slate-500 font-medium">
-            Exibindo <strong className="text-slate-900 font-bold">{sorted.length}</strong> produtos ordenados por <span className="text-emerald-700 font-bold">Potencial de Rentabilidade</span>
+          <div className="flex flex-wrap items-center gap-3 text-xs text-slate-500 font-medium">
+            {hasActiveFilters && (
+              <button
+                type="button"
+                onClick={handleResetFilters}
+                className="flex items-center space-x-1 px-2.5 py-1 rounded-lg bg-emerald-50 hover:bg-emerald-100 text-emerald-800 font-bold border border-emerald-200 transition-colors"
+                title="Limpar todos os filtros aplicados"
+              >
+                <X className="w-3.5 h-3.5 text-emerald-600" />
+                <span>Limpar Filtros</span>
+              </button>
+            )}
+            <span>
+              Exibindo <strong className="text-slate-900 font-bold">{sorted.length}</strong> de <strong className="text-slate-900 font-bold">{products.length}</strong> produtos
+            </span>
           </div>
 
         </div>
 
       </div>
+
+      {/* Loading State Banner */}
+      {isLoading && (
+        <div className="p-8 bg-white rounded-2xl border border-slate-200 text-center space-y-3">
+          <div className="inline-flex p-3 rounded-full bg-emerald-50 text-emerald-600">
+            <Loader2 className="w-8 h-8 animate-spin" />
+          </div>
+          <h3 className="text-sm font-bold text-slate-900">Carregando catálogo oficial de produtos...</h3>
+          <p className="text-xs text-slate-500 max-w-md mx-auto">
+            Sincronizando produtos, comissões percentuais e cálculo de Score de oportunidade.
+          </p>
+        </div>
+      )}
+
+      {/* Error State Banner */}
+      {error && !isLoading && (
+        <div className="p-6 bg-rose-50 rounded-2xl border border-rose-200 flex flex-col sm:flex-row items-center justify-between gap-4">
+          <div className="flex items-start space-x-3">
+            <AlertCircle className="w-6 h-6 text-rose-600 shrink-0 mt-0.5" />
+            <div>
+              <h3 className="text-sm font-bold text-rose-900">Falha ao sincronizar catálogo</h3>
+              <p className="text-xs text-rose-700 mt-0.5">{error}</p>
+            </div>
+          </div>
+          <button
+            type="button"
+            onClick={onRefreshProducts}
+            className="flex items-center space-x-1.5 px-4 py-2 bg-rose-600 hover:bg-rose-700 text-white rounded-xl font-bold text-xs shadow-sm transition-all shrink-0"
+          >
+            <RefreshCw className="w-3.5 h-3.5" />
+            <span>Tentar Novamente</span>
+          </button>
+        </div>
+      )}
+
+      {/* Empty Catalog State */}
+      {!isLoading && !error && products.length === 0 && (
+        <div className="p-8 bg-white rounded-2xl border border-dashed border-slate-300 text-center space-y-4">
+          <div className="inline-flex p-3 rounded-full bg-amber-50 text-amber-600">
+            <ShoppingBag className="w-8 h-8" />
+          </div>
+          <div>
+            <h3 className="text-base font-bold text-slate-900">Catálogo de Produtos Vazio</h3>
+            <p className="text-xs text-slate-500 max-w-md mx-auto mt-1">
+              Nenhum produto de afiliado foi encontrado no banco de dados. Adicione sua primeira oferta ou importe via link oficial.
+            </p>
+          </div>
+          <div className="flex justify-center gap-2 pt-2">
+            <button
+              onClick={onRefreshProducts}
+              className="flex items-center space-x-1.5 px-4 py-2 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-800 font-bold text-xs transition-all"
+            >
+              <RefreshCw className="w-3.5 h-3.5" />
+              <span>Atualizar Catálogo</span>
+            </button>
+            <button
+              onClick={() => setShowImportModal(true)}
+              className="flex items-center space-x-1.5 px-4 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs shadow-md shadow-emerald-600/20 transition-all"
+            >
+              <Zap className="w-3.5 h-3.5" />
+              <span>Importar por Link Oficial</span>
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* Filtered Out State (Products exist but none match filters) */}
+      {!isLoading && !error && products.length > 0 && sorted.length === 0 && (
+        <div className="p-8 bg-white rounded-2xl border border-slate-200 text-center space-y-4">
+          <div className="inline-flex p-3 rounded-full bg-slate-100 text-slate-500">
+            <Filter className="w-8 h-8" />
+          </div>
+          <div>
+            <h3 className="text-base font-bold text-slate-900">Nenhum produto corresponde aos filtros</h3>
+            <p className="text-xs text-slate-500 max-w-md mx-auto mt-1">
+              Existem <strong>{products.length}</strong> produtos cadastrados no catálogo, mas nenhum atendeu à combinação de filtros selecionada.
+            </p>
+          </div>
+          <button
+            onClick={handleResetFilters}
+            className="inline-flex items-center space-x-1.5 px-4 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs shadow-md shadow-emerald-600/20 transition-all"
+          >
+            <X className="w-4 h-4" />
+            <span>Limpar Filtros e Ver Todos ({products.length})</span>
+          </button>
+        </div>
+      )}
 
       {/* Product Cards Grid */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 sm:gap-5">

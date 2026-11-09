@@ -18,7 +18,10 @@ import {
   Clock, 
   Send,
   RefreshCw,
-  Tag
+  Tag,
+  AlertCircle,
+  AlertTriangle,
+  Loader2
 } from 'lucide-react';
 import { AffiliateProduct } from '../types';
 
@@ -28,6 +31,9 @@ interface ContentStudioViewProps {
   onSelectProduct: (product: AffiliateProduct) => void;
   onSchedulePost: (content: { mediaType: 'image' | 'video'; mediaUrl: string; caption: string; channel: string }) => void;
   highContrast: boolean;
+  isLoading?: boolean;
+  error?: string | null;
+  onRefreshProducts?: () => void;
 }
 
 export const ContentStudioView: React.FC<ContentStudioViewProps> = ({
@@ -36,8 +42,13 @@ export const ContentStudioView: React.FC<ContentStudioViewProps> = ({
   onSelectProduct,
   onSchedulePost,
   highContrast,
+  isLoading = false,
+  error = null,
+  onRefreshProducts,
 }) => {
-  const activeProduct = selectedProduct || products[0] || null;
+  const activeProduct = selectedProduct && products.some(p => p.id === selectedProduct.id)
+    ? (products.find(p => p.id === selectedProduct.id) || selectedProduct)
+    : products[0] || null;
   const [activeSubTab, setActiveSubTab] = useState<'images' | 'videos' | 'texts'>('images');
 
   // Image Studio States
@@ -151,16 +162,63 @@ export const ContentStudioView: React.FC<ContentStudioViewProps> = ({
               const p = products.find(prod => prod.id === e.target.value);
               if (p) onSelectProduct(p);
             }}
-            className="text-xs font-semibold border border-slate-300 rounded-xl p-2.5 bg-slate-50 focus:bg-white focus:ring-2 focus:ring-emerald-500 outline-hidden max-w-xs truncate"
+            disabled={products.length === 0 || isLoading}
+            className="text-xs font-semibold border border-slate-300 rounded-xl p-2.5 bg-slate-50 focus:bg-white focus:ring-2 focus:ring-emerald-500 outline-hidden max-w-xs truncate disabled:opacity-60"
           >
-            {products.map(p => (
-              <option key={p.id} value={p.id}>
-                [{p.marketplace}] {p.name} (R$ {p.price.toFixed(2)})
+            {products.length === 0 ? (
+              <option value="">
+                {isLoading ? 'Carregando catálogo...' : 'Nenhum produto cadastrado'}
               </option>
-            ))}
+            ) : (
+              products.map(p => (
+                <option key={p.id} value={p.id}>
+                  [{p.marketplace}] {p.name} (R$ {p.price.toFixed(2)})
+                </option>
+              ))
+            )}
           </select>
         </div>
       </div>
+
+      {/* Loading Banner */}
+      {isLoading && (
+        <div className="p-3 bg-slate-50 border border-slate-200 rounded-xl text-xs text-slate-600 flex items-center space-x-2">
+          <Loader2 className="w-4 h-4 text-emerald-600 animate-spin shrink-0" />
+          <span>Carregando produtos para a Fábrica de Conteúdo...</span>
+        </div>
+      )}
+
+      {/* Error Banner */}
+      {error && !isLoading && (
+        <div className="p-3 bg-rose-50 border border-rose-200 rounded-xl text-xs text-rose-800 flex items-start justify-between gap-2">
+          <div className="flex items-start space-x-2">
+            <AlertCircle className="w-4 h-4 text-rose-600 shrink-0 mt-0.5" />
+            <span>{error}</span>
+          </div>
+          {onRefreshProducts && (
+            <button
+              type="button"
+              onClick={onRefreshProducts}
+              className="px-2 py-1 bg-rose-100 hover:bg-rose-200 text-rose-900 rounded font-bold text-[11px] shrink-0"
+            >
+              Recarregar
+            </button>
+          )}
+        </div>
+      )}
+
+      {/* Empty State Banner */}
+      {!isLoading && !error && products.length === 0 && (
+        <div className="p-4 bg-amber-50 border border-amber-200 rounded-2xl text-xs text-amber-900 flex items-start space-x-3">
+          <AlertTriangle className="w-5 h-5 text-amber-600 shrink-0 mt-0.5" />
+          <div>
+            <h4 className="font-bold text-sm">Nenhum produto cadastrado no catálogo</h4>
+            <p className="text-amber-700 mt-1">
+              Para gerar criativos, vídeos ou copys personalizadas com a IA, é necessário selecionar um produto com link de afiliado oficial. Navegue até a Central de Produtos para cadastrar ou importar sua primeira oferta.
+            </p>
+          </div>
+        </div>
+      )}
 
       {/* Sub-Tabs: Imagens, Vídeos, Textos */}
       <div className="flex space-x-2 border-b border-slate-200 pb-2">
