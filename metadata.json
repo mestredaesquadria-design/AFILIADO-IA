@@ -1,0 +1,6 @@
+{
+  "name": "Afiliado IA - Central Profissional de Marketing de Afiliados",
+  "description": "Plataforma inteligente de pesquisa de produtos, automação de campanhas, produção de vídeos, imagens, copys e gestão de comissões de afiliados.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
